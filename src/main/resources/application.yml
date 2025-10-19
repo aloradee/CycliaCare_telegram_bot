@@ -1,8 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:cycledb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
 telegram:
   bot:
-    username: ${CycliaCare_bot}
-    token: ${8183091159:AAGXFkFHSlqexdXAM1dhg-NXvsCCyBN9mlk}
-spring:
-  jpa:
-  hibernate: ddl-auto=create-drop
-  show-sql: true
+    username: CycliaCare_bot
+    token: "8183091159:AAGXFkFHSlqexdXAM1dhg-NXvsCCyBN9mlk"
+
+logging:
+  level:
+    com.telegrambot.cyclebot: DEBUG
+    org.telegram: INFO

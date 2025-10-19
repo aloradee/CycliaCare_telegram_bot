@@ -1,33 +1,49 @@
 package com.telegrambot.cyclebot.bot;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.extensions.bots.commandbot.TelegramLongPollingCommandBot;
+import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
+import jakarta.annotation.PostConstruct;
 import java.util.List;
 
 @Component
 @Slf4j
 public class TelegramBot extends TelegramLongPollingCommandBot {
 
-    private final String botUsername;
+    @Value("${telegram.bot.token}")
+    private String botToken;
+
+    @Value("${telegram.bot.username}")
+    private String botUsername;
+
     private final List<org.telegram.telegrambots.extensions.bots.commandbot.commands.IBotCommand> commands;
 
-    public TelegramBot(
-            String botToken,
-            String botUsername,
-            List<org.telegram.telegrambots.extensions.bots.commandbot.commands.IBotCommand> commands
-    ) {
-        super(botToken);
-        this.botUsername = botUsername;
+    public TelegramBot(List<org.telegram.telegrambots.extensions.bots.commandbot.commands.IBotCommand> commands) {
+        super();
         this.commands = commands;
+    }
 
+    @PostConstruct
+    public void init() {
         // Регистрируем все команды
         commands.forEach(this::register);
+
+        // Регистрируем бота
+        try {
+            TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
+            botsApi.registerBot(this);
+            log.info("Telegram bot registered successfully!");
+        } catch (TelegramApiException e) {
+            log.error("Error registering bot", e);
+        }
 
         // Обработка некорректных команд
         registerDefaultAction((absSender, message) -> {
@@ -45,6 +61,11 @@ public class TelegramBot extends TelegramLongPollingCommandBot {
     @Override
     public String getBotUsername() {
         return botUsername;
+    }
+
+    @Override
+    public String getBotToken() {
+        return botToken;
     }
 
     @Override

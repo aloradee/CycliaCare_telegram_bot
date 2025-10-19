@@ -54,7 +54,8 @@ public class SymptomCommand implements IBotCommand {
         } else {
             String symptomType = strings[0];
             String severity = strings[1];
-            String result = symptomService
+            String result = symptomService.addSymptom(message.getChatId(), symptomType, severity);
+            answer.setText(result);
         }
         sendMessage(answer, absSender);
     }

@@ -17,8 +17,12 @@ public class User {
     private String lastName;
     private String username;
 
-    private Integer cycleLength = 28;
+    private Integer cycleLength = 28; // Длина цикла по умолчанию
+    private Integer periodLength = 5;  // Длина месячных по умолчанию
+    private Integer ovulationOffset = 14; // Смещение овуляции
+
     private LocalDate lastPeriodStart;
+    private LocalDate lastPeriodEnd;   // Конец последних месячных
     private LocalDate nextPeriodStart;
     private LocalDate ovulationDate;
 

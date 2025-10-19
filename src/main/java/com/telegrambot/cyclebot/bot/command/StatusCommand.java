@@ -29,7 +29,7 @@ public class StatusCommand implements IBotCommand {
     }
 
     @Override
-    public void processMessage(AbsSender absSender, Message message, String[] strings) {
+    public void processMessage(AbsSender absSender, Message message, String[] arguments) {
         String status = cycleService.getCurrentStatus(message.getChatId());
 
         SendMessage answer = new SendMessage();
