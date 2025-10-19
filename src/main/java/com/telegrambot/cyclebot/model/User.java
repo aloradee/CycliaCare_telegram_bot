@@ -1,42 +1,37 @@
 package com.telegrambot.cyclebot.model;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import jakarta.persistence.*;
+import lombok.Data;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@Data
 @Entity
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
+@Table(name = "users")
 public class User {
-
     @Id
     private Long chatId;
 
     private String firstName;
-
     private String lastName;
-
-    private String userName;
+    private String username;
 
     private Integer cycleLength = 28;
-
     private LocalDate lastPeriodStart;
-
     private LocalDate nextPeriodStart;
-
     private LocalDate ovulationDate;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private LocalDate registeredAt;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Cycle> cycles = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Symptom> symptoms = new ArrayList<>();
+
+    @PrePersist
+    public void prePersist() {
+        this.registeredAt = LocalDate.now();
+    }
 }

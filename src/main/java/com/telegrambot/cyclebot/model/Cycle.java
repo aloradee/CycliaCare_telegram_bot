@@ -1,28 +1,30 @@
 package com.telegrambot.cyclebot.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import lombok.Data;
 import java.time.LocalDate;
 
+@Data
 @Entity
-@Getter
-@Setter
-@AllArgsConstructor
-@NoArgsConstructor
+@Table(name = "cycles")
 public class Cycle {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_chat_id")
     private User user;
 
     private LocalDate startDate;
     private LocalDate endDate;
     private Integer cycleLength;
+    private LocalDate predictedNextStart;
 
+    private LocalDate createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDate.now();
+    }
 }
