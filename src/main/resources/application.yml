@@ -1,0 +1,8 @@
+telegram:
+  bot:
+    username: ${CycliaCare_bot}
+    token: ${8183091159:AAGXFkFHSlqexdXAM1dhg-NXvsCCyBN9mlk}
+spring:
+  jpa:
+  hibernate: ddl-auto=create-drop
+  show-sql: true
