@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -14,25 +13,41 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    public void registerUser(org.telegram.telegrambots.meta.api.objects.User telegramUser, Long chatId) {
+    /**
+     * Регистрирует или обновляет пользователя
+     */
+    public User registerUser(org.telegram.telegrambots.meta.api.objects.User telegramUser, Long chatId) {
         User user = userRepository.findById(chatId).orElse(new User());
         user.setChatId(chatId);
         user.setFirstName(telegramUser.getFirstName());
         user.setLastName(telegramUser.getLastName());
         user.setUsername(telegramUser.getUserName());
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
         log.info("User registered: {} ({})", telegramUser.getFirstName(), chatId);
+        return savedUser;
+    }
+
+    /**
+     * Сохраняет пользователя (для обновления данных)
+     */
+    public User saveUser(User user) {
+        return userRepository.save(user);
+    }
+
+    /**
+     * Получает пользователя, если не найден - создает нового
+     */
+    public User getUser(Long chatId) {
+        return userRepository.findById(chatId)
+                .orElseGet(() -> {
+                    User newUser = new User();
+                    newUser.setChatId(chatId);
+                    return userRepository.save(newUser);
+                });
     }
 
     public void saveFeedback(Long chatId, String feedbackText) {
         log.info("Feedback from user {}: {}", chatId, feedbackText);
-
-
     }
-
-    public User getUser(Long chatId) {
-        return userRepository.findById(chatId).orElseThrow(() -> new RuntimeException("User not found"));
-    }
-
 }

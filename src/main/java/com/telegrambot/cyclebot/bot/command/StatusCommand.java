@@ -1,6 +1,7 @@
 package com.telegrambot.cyclebot.bot.command;
 
 import com.telegrambot.cyclebot.service.CycleService;
+import com.telegrambot.cyclebot.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,7 @@ import static com.telegrambot.cyclebot.utils.TelegramMessageSender.sendMessage;
 @AllArgsConstructor
 @Slf4j
 public class StatusCommand implements IBotCommand {
-
+    private final UserService userService;
     private final CycleService cycleService;
 
     @Override
@@ -30,6 +31,9 @@ public class StatusCommand implements IBotCommand {
 
     @Override
     public void processMessage(AbsSender absSender, Message message, String[] arguments) {
+        // Убедимся, что пользователь зарегистрирован
+        userService.registerUser(message.getFrom(), message.getChatId());
+
         String status = cycleService.getCurrentStatus(message.getChatId());
 
         SendMessage answer = new SendMessage();

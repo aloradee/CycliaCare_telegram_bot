@@ -3,6 +3,7 @@ package com.telegrambot.cyclebot.service;
 import com.telegrambot.cyclebot.model.Cycle;
 import com.telegrambot.cyclebot.model.User;
 import com.telegrambot.cyclebot.repositories.CycleRepository;
+import com.telegrambot.cyclebot.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,45 +20,50 @@ public class CycleService {
 
     private final UserService userService;
     private final CycleRepository cycleRepository;
+    private final UserRepository userRepository;
 
     public String startNewCycle(Long chatId, LocalDate startDate) {
-        User user = userService.getUser(chatId);
+        try {
+            User user = userService.getUser(chatId);
 
-        // Сохраняем цикл
-        Cycle cycle = new Cycle();
-        cycle.setUser(user);
-        cycle.setStartDate(startDate);
-        cycle.setCycleLength(user.getCycleLength());
+            // Сохраняем цикл
+            Cycle cycle = new Cycle();
+            cycle.setUser(user);
+            cycle.setStartDate(startDate);
+            cycle.setCycleLength(user.getCycleLength());
 
-        // ПРАВИЛЬНЫЙ расчет следующих дат
-        LocalDate nextPeriod = startDate.plusDays(user.getCycleLength());
-        LocalDate ovulation = startDate.plusDays(user.getCycleLength() - 14);
+            // ПРАВИЛЬНЫЕ расчеты
+            LocalDate nextPeriod = startDate.plusDays(user.getCycleLength());
+            LocalDate ovulation = nextPeriod.minusDays(user.getOvulationOffset());
 
-        cycle.setPredictedNextStart(nextPeriod);
-        cycleRepository.save(cycle);
+            cycle.setPredictedNextStart(nextPeriod);
+            cycleRepository.save(cycle);
 
-        // Обновляем пользователя
-        user.setLastPeriodStart(startDate);
-        user.setNextPeriodStart(nextPeriod);
-        user.setOvulationDate(ovulation);
+            // Обновляем пользователя ПРАВИЛЬНО
+            user.setLastPeriodStart(startDate);
+            user.setNextPeriodStart(nextPeriod);
+            user.setOvulationDate(ovulation);
 
-        userService.registerUser(new org.telegram.telegrambots.meta.api.objects.User(
-                user.getChatId(), user.getFirstName(), false,
-                user.getLastName(), user.getUsername(), null, false, false, false, false, false
-        ), user.getChatId());
+            // Сохраняем обновленного пользователя
+            userService.saveUser(user);
 
-        return String.format("""
-            ✅ Цикл начат %s
-            
-            📅 Следующая менструация: %s
-            🎯 Овуляция: %s
-            📏 Длина цикла: %d дней
-            
-            💡 Используйте /status для текущего статуса""",
-                startDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
-                nextPeriod.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
-                ovulation.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
-                user.getCycleLength());
+            return String.format("""
+                ✅ Цикл начат %s
+                
+                📅 Следующая менструация: %s
+                🎯 Овуляция: %s
+                📏 Длина цикла: %d дней
+                
+                💡 Используйте /status для текущего статуса""",
+                    startDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
+                    nextPeriod.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
+                    ovulation.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
+                    user.getCycleLength());
+
+        } catch (Exception e) {
+            log.error("Error starting cycle for user {}", chatId, e);
+            return "❌ Ошибка при создании цикла. Попробуйте еще раз.";
+        }
     }
 
     public String setCycleLength(Long chatId, Integer cycleLength) {
@@ -66,18 +72,22 @@ public class CycleService {
                 return "❌ Длина цикла должна быть от 21 до 35 дней.";
             }
 
-            User user = userService.getUser(chatId);
+            // ВАЖНО: получаем пользователя напрямую из репозитория
+            User user = userRepository.findById(chatId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
             Integer oldLength = user.getCycleLength();
             user.setCycleLength(cycleLength);
 
             // Пересчитываем прогнозы если цикл уже начат
             if (user.getLastPeriodStart() != null) {
                 updateCyclePredictions(user);
-                userService.registerUser(new org.telegram.telegrambots.meta.api.objects.User(
-                        user.getChatId(), user.getFirstName(), false,
-                        user.getLastName(), user.getUsername(), null, false, false, false, false, false
-                ), user.getChatId());
+            }
 
+            // Сохраняем обновленного пользователя
+            userRepository.save(user);
+
+            if (user.getLastPeriodStart() != null) {
                 return String.format("""
                     ✅ Длина цикла изменена!
                     
@@ -93,11 +103,6 @@ public class CycleService {
                         user.getNextPeriodStart().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
                         user.getOvulationDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
             } else {
-                userService.registerUser(new org.telegram.telegrambots.meta.api.objects.User(
-                        user.getChatId(), user.getFirstName(), false,
-                        user.getLastName(), user.getUsername(), null, false, false, false, false, false
-                ), user.getChatId());
-
                 return String.format("""
                     ✅ Длина цикла установлена: %d дней
                     
@@ -157,7 +162,9 @@ public class CycleService {
 
     public String getCurrentStatus(Long chatId) {
         try {
-            User user = userService.getUser(chatId);
+            // ВАЖНО: всегда получаем свежего пользователя из базы
+            User user = userRepository.findById(chatId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
             if (user.getLastPeriodStart() == null) {
                 return """
@@ -209,6 +216,7 @@ public class CycleService {
             return status.toString();
 
         } catch (Exception e) {
+            log.error("Error getting status for user {}", chatId, e);
             return """
                ❓ Данные о цикле не введены.
                💡 Используйте /startperiod чтобы начать отслеживание.""";
@@ -293,7 +301,8 @@ public class CycleService {
     }
     public String changeCycleStartDate(Long chatId, LocalDate newStartDate) {
         try {
-            User user = userService.getUser(chatId);
+            User user = userRepository.findById(chatId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
 
             if (user.getLastPeriodStart() == null) {
                 return """
@@ -308,18 +317,22 @@ public class CycleService {
             Cycle lastCycle = cycleRepository.findTopByUserOrderByStartDateDesc(user)
                     .orElseThrow(() -> new RuntimeException("Cycle not found"));
 
+            // ПРАВИЛЬНЫЕ расчеты
+            LocalDate nextPeriod = newStartDate.plusDays(user.getCycleLength());
+            LocalDate ovulation = nextPeriod.minusDays(user.getOvulationOffset());
+
             // Обновляем цикл
             lastCycle.setStartDate(newStartDate);
-            lastCycle.setPredictedNextStart(newStartDate.plusDays(user.getCycleLength()));
+            lastCycle.setPredictedNextStart(nextPeriod);
             cycleRepository.save(lastCycle);
 
             // Обновляем пользователя
             user.setLastPeriodStart(newStartDate);
-            updateCyclePredictions(user);
-            userService.registerUser(new org.telegram.telegrambots.meta.api.objects.User(
-                    user.getChatId(), user.getFirstName(), false,
-                    user.getLastName(), user.getUsername(), null, false, false, false, false, false
-            ), user.getChatId());
+            user.setNextPeriodStart(nextPeriod);
+            user.setOvulationDate(ovulation);
+
+            // Сохраняем пользователя
+            userRepository.save(user);
 
             return String.format("""
                 ✅ Дата начала цикла изменена!
@@ -334,8 +347,8 @@ public class CycleService {
                 💡 Используйте /status для проверки нового статуса""",
                     oldStartDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
                     newStartDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
-                    user.getNextPeriodStart().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
-                    user.getOvulationDate().format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
+                    nextPeriod.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
+                    ovulation.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")));
 
         } catch (Exception e) {
             log.error("Error changing cycle start date for user {}", chatId, e);

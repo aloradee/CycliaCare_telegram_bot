@@ -1,5 +1,6 @@
 package com.telegrambot.cyclebot.bot.command;
 
+import com.telegrambot.cyclebot.model.User;
 import com.telegrambot.cyclebot.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,27 +31,29 @@ public class StartCommand implements IBotCommand {
 
     @Override
     public void processMessage(AbsSender absSender, Message message, String[] arguments) {
-        userService.registerUser(message.getFrom(), message.getChatId());
+        // Регистрируем пользователя и получаем сохраненного пользователя
+        User user = userService.registerUser(message.getFrom(), message.getChatId());
 
         SendMessage answer = new SendMessage();
         answer.setChatId(message.getChatId());
         answer.setText("""
-                🌸 Добро пожаловать в CycleCare!
-                
-                Я помогу вам отслеживать менструальный цикл, симптомы и настроение.
-                
-                📋 Основные команды:
-                /startperiod - Начать отсчет цикла
-                /changeperiod - Изменить дату начала цикла
-                /symptom - Добавить симптомы
-                /status - Текущий статус цикла
-                /calendar - Календарь событий
-                /history - История циклов
-                /feedback - Обратная связь
-                /help - Помощь
-                
-                💡 Для начала работы введите /startperiod
-                🔄 Если ошиблись с датой - используйте /changeperiod""");
+            🌸 Добро пожаловать в CycleCare!
+            
+            Я помогу вам отслеживать менструальный цикл, симптомы и настроение.
+            
+            📋 Основные команды:
+            /startperiod - Начать отсчет цикла
+            /changeperiod - Изменить дату начала цикла
+            /setcycle - Установить длину цикла
+            /endperiod - Отметить конец месячных
+            /symptom - Добавить симптомы
+            /status - Текущий статус цикла
+            /calendar - Календарь событий
+            /history - История циклов
+            /feedback - Обратная связь
+            /help - Помощь
+            
+            💡 Для начала работы введите /startperiod""");
 
         sendMessage(answer, absSender);
     }
