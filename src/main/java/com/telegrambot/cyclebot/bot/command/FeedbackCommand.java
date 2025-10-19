@@ -85,14 +85,14 @@ public class FeedbackCommand implements IBotCommand {
     private Feedback.FeedbackType determineFeedbackType(String[] arguments) {
         if (arguments.length > 0) {
             String firstArg = arguments[0].toLowerCase();
-            switch (firstArg) {
-                case "bug": return Feedback.FeedbackType.BUG_REPORT;
-                case "feature": return Feedback.FeedbackType.FEATURE_REQUEST;
-                case "question": return Feedback.FeedbackType.QUESTION;
-                case "complaint": return Feedback.FeedbackType.COMPLAINT;
-                case "rating": return Feedback.FeedbackType.GENERAL_FEEDBACK;
-                default: return Feedback.FeedbackType.GENERAL_FEEDBACK;
-            }
+            return switch (firstArg) {
+                case "bug" -> Feedback.FeedbackType.BUG_REPORT;
+                case "feature" -> Feedback.FeedbackType.FEATURE_REQUEST;
+                case "question" -> Feedback.FeedbackType.QUESTION;
+                case "complaint" -> Feedback.FeedbackType.COMPLAINT;
+                case "rating" -> Feedback.FeedbackType.GENERAL_FEEDBACK;
+                default -> Feedback.FeedbackType.GENERAL_FEEDBACK;
+            };
         }
         return Feedback.FeedbackType.GENERAL_FEEDBACK;
     }
